@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "esNext",
+    "module": "commonjs",
+    "lib": ["dom", "es2015", "es2016", "es2017", "es6", "scriptHost"],
+    "jsx": "react",
+    "declaration": true,
+    "outDir": "./lib",
+    "strict": true,
+    "moduleResolution": "node",
+    "baseUrl": "./components",
+    "paths": {
+      "components/*": ["./*"]
+    },
+    "sourceMap": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true
+  },
+  "exclude": ["./node_modules/*", "lib", "es", "dist"],
+  "skipLibCheck": true,
+  "skipDefaultLibCheck": true
+}
