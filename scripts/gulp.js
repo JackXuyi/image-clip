@@ -88,7 +88,7 @@ gulp.task('scss', sassTask)
 function compiler() {
   return gulp.series(
     gulp.parallel('clean:lib', 'clean:es'),
-    gulp.parallel(gulp.series('tsx', 'declare', 'js'), 'scss'),
+    gulp.parallel(gulp.series('tsx', 'declare', 'js'), 'scss')
   )
 }
 
@@ -102,7 +102,7 @@ function watchTsx() {
       // usePolling: true,
       depth: 3,
     },
-    gulp.series('tsx', 'declare', 'js', 'scss'),
+    gulp.series('tsx', 'declare', 'js', 'scss')
   )
 }
 
@@ -110,7 +110,7 @@ function watchResource() {
   return gulp.watch(
     [resolveRootPath('components') + '/**/*.(scss|png|jpg|svg|gif)'],
     { events: 'all', ignoreInitial: false },
-    gulp.series('scss'),
+    gulp.series('scss')
   )
 }
 
