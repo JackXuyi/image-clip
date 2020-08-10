@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "updateEntry": "node ./scripts/updateEntry.js",
-    "build": "npm run updateEntry && gulp -f ./scripts/gulp.prod.js",
+    "build": "gulp -f ./scripts/gulp.prod.js",
     "dev": "gulp -f ./scripts/gulp.dev.js",
     "doc": "gulp -f ./scripts/gulp.doc.js",
     "jest": "gulp -f ./scripts/gulp.test.js",
@@ -19,7 +19,7 @@
     "minor": "npm version minor",
     "major": "npm version major",
     "deploy:next": "npm version prerelease --preid=next && npm run build && npm publish --tag next",
-    "deploy:beta": "npm version prerelease --preid=alpha && npm run build &&npm publish --tag beta",
+    "deploy:beta": "npm version prerelease --preid=alpha && npm run build && npm publish --tag beta",
     "deploy": "npm run build && npm publish",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
