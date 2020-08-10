@@ -15,6 +15,12 @@ class ImageClip extends React.PureComponent<IProps> {
   private hiddenCanvas: HTMLCanvasElement | null = null
   private hiddenCanvasCtx: CanvasRenderingContext2D | null = null
 
+  private scale: number = 1 // 缩放大小
+  private lastScale: number = 1 // 上次缩放大小
+  private initScale: number = 1.0 // 初始化缩放大小
+  private imgWidth: number = 0 // 图片宽
+  private imgHeight: number = 0 // 图片高
+
   public componentDidMount() {
     const { src } = this.props
     this.init()
@@ -34,13 +40,22 @@ class ImageClip extends React.PureComponent<IProps> {
   }
 
   public render() {
-    const { src, width, style = {}, ...otherProps } = this.props
+    const { src, width, height, style = {}, ...otherProps } = this.props
     return (
       <>
-        <canvas {...otherProps} style={style} ref={this.getCanvas} />
         <canvas
           {...otherProps}
-          style={{ ...style, display: 'none' }}
+          style={{ ...style, width, height }}
+          ref={this.getCanvas}
+          width={width}
+          height={height}
+          onWheel={this.handleWheel(50)}
+        />
+        <canvas
+          {...otherProps}
+          style={{ ...style, width, height, display: 'none' }}
+          width={width}
+          height={height}
           ref={this.getHiddenCanvas}
         />
       </>
@@ -89,12 +104,20 @@ class ImageClip extends React.PureComponent<IProps> {
         this.hiddenCanvasCtx.clearRect(0, 0, width, height)
 
         const { width: iWidth, height: iHeight } = img
+        this.imgWidth = iWidth
+        this.imgHeight = iHeight
         const scale = this.getInitScale(width, height, img.width, img.height)
 
-        const x = (width - scale * iWidth) / 2
-        const y = (height - scale * iHeight) / 2
-        this.canvasCtx.drawImage(img, x, y, width, height)
-        this.hiddenCanvasCtx.drawImage(img, x, y, width, height)
+        this.initScale = scale
+        this.scale = scale
+        this.lastScale = scale
+
+        const dW = scale * iWidth
+        const dH = scale * iHeight
+        const x = (width - dW) / 2
+        const y = (height - dH) / 2
+        this.canvasCtx.drawImage(img, x, y, dW, dH)
+        this.hiddenCanvasCtx.drawImage(img, x, y, dW, dH)
       }
     } catch (e) {
       //
@@ -106,6 +129,59 @@ class ImageClip extends React.PureComponent<IProps> {
     const wScale = cw / iw
     const hScale = ch / ih
     return parseFloat(Math.min(wScale, hScale).toFixed(2))
+  }
+
+  // 滚动事件
+  private handleWheel = (time: number) => {
+    let drawing = false
+    let timer: any = null
+    return (e: any) => {
+      if (drawing) {
+        return
+      }
+      drawing = true
+      if (timer) {
+        clearTimeout(timer)
+      }
+
+      timer = setTimeout(() => {
+        drawing = false
+      }, time)
+
+      const { deltaX, deltaY, clientX, clientY } = e
+      const { x, y } = e.target.getBoundingClientRect()
+      let deltaScale = deltaY > 0 ? 0.01 : -0.01
+      const scale = parseInt(`${(this.scale + deltaScale) * 100}`)
+      if (scale <= 10) {
+        this.scale = 0.1
+      } else {
+        this.scale = scale / 100
+      }
+      if (this.lastScale !== this.scale) {
+        this.lastScale = this.scale
+        this.redrawImage(this.scale)
+      }
+    }
+  }
+
+  // 重绘制图片
+  private redrawImage = (scale: number) => {
+    const { width: cw, height: ch } = this.props
+    if (this.canvasCtx && this.hiddenCanvas && cw && ch) {
+      const [x, y, width, height] = this.getScaleInfo(scale)
+      this.canvasCtx.clearRect(0, 0, cw, ch)
+      this.canvasCtx.drawImage(this.hiddenCanvas, x, y, width, height)
+    }
+  }
+
+  // 绘制缩放图片
+  private getScaleInfo = (scale: number) => {
+    const { width, height } = this.props
+    const dW = scale * width
+    const dH = scale * height
+    const x = (width - dW) / 2
+    const y = (height - dH) / 2
+    return [x, y, dW, dH]
   }
 }
 
