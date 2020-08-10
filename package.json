@@ -18,9 +18,9 @@
     "patch": "npm version patch",
     "minor": "npm version minor",
     "major": "npm version major",
-    "deploy:next": "npm version prerelease --preid=next && npm run build && npm publish --tag next",
-    "deploy:beta": "npm version prerelease --preid=alpha && npm run build && npm publish --tag beta",
-    "deploy": "npm run build && npm publish",
+    "deploy:next": "npm version prerelease --preid=next && npm run build && npm publish --tag next --access public",
+    "deploy:beta": "npm version prerelease --preid=alpha && npm run build && npm publish --tag beta --access public",
+    "deploy": "npm run build && npm publish --access public",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "xuyi",
