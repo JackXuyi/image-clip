@@ -2,6 +2,14 @@ import React from 'react'
 
 import { stopImmediatePropagation } from './utils'
 
+const ImageType = {
+  png: { value: 'image/png', suffix: 'png' },
+  jpeg: { value: 'image/jpeg', suffix: 'jpeg' },
+  bmp: { value: 'image/bmp', suffix: 'bmp' },
+  webp: { value: 'image/webp', suffix: 'webp' },
+  icon: { value: 'image/x-icon', suffix: 'ico' },
+}
+
 interface IProps
   extends React.DetailedHTMLProps<
     React.CanvasHTMLAttributes<HTMLCanvasElement>,
@@ -48,6 +56,28 @@ class ImageClip extends React.PureComponent<IProps> {
     this.destroy()
 
     window.cancelAnimationFrame(this.requestAnimationFrameId)
+  }
+
+  public exportImage = (
+    type: keyof typeof ImageType,
+    name: string,
+    quality: number,
+  ) => {
+    if (ImageType[type] && this.canvas) {
+      const { value, suffix } = ImageType[type]
+      const imgURL = this.canvas.toDataURL(value, quality)
+      const fileName = `${name}.${suffix}`
+      const dlLink = document.createElement('a')
+      dlLink.download = fileName
+      dlLink.href = imgURL
+      dlLink.dataset.downloadUrl = [value, dlLink.download, dlLink.href].join(
+        ':',
+      )
+
+      document.body.appendChild(dlLink)
+      dlLink.click()
+      document.body.removeChild(dlLink)
+    }
   }
 
   public render() {
