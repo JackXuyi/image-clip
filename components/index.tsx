@@ -1,5 +1,7 @@
 import React from 'react'
 
+import { stopImmediatePropagation } from './utils'
+
 interface IProps
   extends React.DetailedHTMLProps<
     React.CanvasHTMLAttributes<HTMLCanvasElement>,
@@ -17,14 +19,21 @@ class ImageClip extends React.PureComponent<IProps> {
 
   private scale: number = 1 // 缩放大小
   private lastScale: number = 1 // 上次缩放大小
-  private initScale: number = 1.0 // 初始化缩放大小
-  private imgWidth: number = 0 // 图片宽
-  private imgHeight: number = 0 // 图片高
+
+  private moving: boolean = false
+  private movingX: number = 0
+  private movingY: number = 0
+
+  private requestAnimationFrameId: number = 0
 
   public componentDidMount() {
     const { src } = this.props
     this.init()
     this.draw(src)
+
+    this.requestAnimationFrameId = window.requestAnimationFrame(
+      this.requestAnimationFrame,
+    )
   }
 
   public componentDidUpdate(prevProps: IProps) {
@@ -37,6 +46,8 @@ class ImageClip extends React.PureComponent<IProps> {
 
   public componentWillUnmount() {
     this.destroy()
+
+    window.cancelAnimationFrame(this.requestAnimationFrameId)
   }
 
   public render() {
@@ -45,15 +56,25 @@ class ImageClip extends React.PureComponent<IProps> {
       <>
         <canvas
           {...otherProps}
-          style={{ ...style, width, height }}
+          style={{ ...style, width, height, touchAction: 'none' }}
           ref={this.getCanvas}
           width={width}
           height={height}
-          onWheel={this.handleWheel(50)}
+          onWheel={this.handleWheel}
+          onMouseDown={this.handleMouseDown}
+          onMouseMove={this.handleMouseMove}
+          onMouseLeave={this.handleMouseLeave}
+          onMouseUp={this.handleMouseUp}
         />
         <canvas
           {...otherProps}
-          style={{ ...style, width, height, display: 'none' }}
+          style={{
+            ...style,
+            width,
+            height,
+            display: 'none',
+            touchAction: 'none',
+          }}
           width={width}
           height={height}
           ref={this.getHiddenCanvas}
@@ -70,11 +91,18 @@ class ImageClip extends React.PureComponent<IProps> {
     if (this.canvas && this.hiddenCanvas) {
       this.canvasCtx = this.canvas.getContext('2d')
       this.hiddenCanvasCtx = this.hiddenCanvas.getContext('2d')
+
+      this.canvas.addEventListener('wheel', this.handleWheel, {
+        passive: false,
+      })
     }
   }
 
   // 释放引用
   private destroy = () => {
+    if (this.canvas) {
+      this.canvas.removeEventListener('wheel', this.handleWheel)
+    }
     this.canvas = null
     this.hiddenCanvas = null
     this.canvasCtx = null
@@ -104,11 +132,8 @@ class ImageClip extends React.PureComponent<IProps> {
         this.hiddenCanvasCtx.clearRect(0, 0, width, height)
 
         const { width: iWidth, height: iHeight } = img
-        this.imgWidth = iWidth
-        this.imgHeight = iHeight
         const scale = this.getInitScale(width, height, img.width, img.height)
 
-        this.initScale = scale
         this.scale = scale
         this.lastScale = scale
 
@@ -128,40 +153,58 @@ class ImageClip extends React.PureComponent<IProps> {
   private getInitScale = (cw: number, ch: number, iw: number, ih: number) => {
     const wScale = cw / iw
     const hScale = ch / ih
-    return parseFloat(Math.min(wScale, hScale).toFixed(2))
+    return Number(Math.min(wScale, hScale).toFixed(2))
   }
 
   // 滚动事件
-  private handleWheel = (time: number) => {
-    let drawing = false
-    let timer: any = null
-    return (e: any) => {
-      if (drawing) {
-        return
-      }
-      drawing = true
-      if (timer) {
-        clearTimeout(timer)
-      }
+  private handleWheel = (e: any) => {
+    stopImmediatePropagation(e)
 
-      timer = setTimeout(() => {
-        drawing = false
-      }, time)
-
-      const { deltaX, deltaY, clientX, clientY } = e
-      const { x, y } = e.target.getBoundingClientRect()
-      let deltaScale = deltaY > 0 ? 0.01 : -0.01
-      const scale = parseInt(`${(this.scale + deltaScale) * 100}`)
-      if (scale <= 10) {
-        this.scale = 0.1
-      } else {
-        this.scale = scale / 100
-      }
-      if (this.lastScale !== this.scale) {
-        this.lastScale = this.scale
-        this.redrawImage(this.scale)
-      }
+    const { deltaY } = e
+    const deltaScale = deltaY > 0 ? 0.01 : -0.01
+    const scale = this.scale + deltaScale
+    if (scale <= 0.1) {
+      this.scale = 0.1
+    } else if (scale >= 5) {
+      this.scale = 5
+    } else {
+      this.scale = scale
     }
+  }
+
+  // 鼠标按下事件
+  private handleMouseDown = (e: any) => {
+    this.moving = true
+  }
+
+  // 鼠标移动事件
+  private handleMouseMove = (e: any) => {
+    const { movementX, movementY } = e
+    if (this.moving) {
+      this.movingX += movementX
+      this.movingY += movementY
+    }
+  }
+
+  // 鼠标释放事件
+  private handleMouseUp = (e: any) => {
+    this.moving = false
+  }
+
+  // 鼠标移出事件
+  private handleMouseLeave = (e: any) => {
+    this.moving = false
+  }
+
+  // 重绘图片
+  private requestAnimationFrame = () => {
+    if (this.lastScale !== this.scale) {
+      this.lastScale = this.scale
+    }
+    this.redrawImage(this.scale)
+    this.requestAnimationFrameId = window.requestAnimationFrame(
+      this.requestAnimationFrame,
+    )
   }
 
   // 重绘制图片
@@ -179,8 +222,8 @@ class ImageClip extends React.PureComponent<IProps> {
     const { width, height } = this.props
     const dW = scale * width
     const dH = scale * height
-    const x = (width - dW) / 2
-    const y = (height - dH) / 2
+    const x = (width - dW) / 2 + this.movingX
+    const y = (height - dH) / 2 + this.movingY
     return [x, y, dW, dH]
   }
 }
